@@ -1,27 +1,19 @@
 # Proyecto2-MPI
 
-Para compilar el programa partea_3.c
+## Para compilar el programa partea_3.c
 
-gcc -w partea_3.c -o partea_3 -lcrypto
+*gcc -w partea_3.c -o partea_3 -lcrypto*
 
-Para correr el programa 
+## Para correr el programa
 
-./partea_3
+*./partea_3*
 
 # parte de bruteforce
 
-Para compilar el programa partea_3.c
+## Compilar
 
-gcc -w partea_3.c -o partea_3 -lcrypto
+*mpicc -w -o bruteforce bruteforce.c -lssl -lcrypto*
 
-Para correr el programa 
+## Correr el progama 
 
-./partea_3
-
-Compilar
-
-mpicc -w -o bruteforce bruteforce.c -lssl -lcrypto
-
-Correr el progama 
-
-mpirun -n [numero de procesos] ./bruteforce
+*mpirun -n [numero de procesos] ./bruteforce*
