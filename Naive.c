@@ -11,10 +11,10 @@
 void decrypt(uint64_t key, char *ciph, int len) {
   DES_key_schedule ks;
   DES_cblock k;
-  memcpy(k, &key, 8);
-  DES_set_odd_parity(&k);
-  DES_set_key_checked(&k, &ks);
-  DES_ecb_encrypt((const_DES_cblock *)ciph, (DES_cblock *)ciph, &ks, DES_DECRYPT);
+  memcpy(k, &key, 8); // Convertir llave de 64 bits a bloque DES
+  DES_set_odd_parity(&k); // Establecer paridad impar para la llave
+  DES_set_key_checked(&k, &ks); // Preparar la llave para el cifrado
+  DES_ecb_encrypt((const_DES_cblock *)ciph, (DES_cblock *)ciph, &ks, DES_DECRYPT); // Descifrar en modo ECB
 }
 
 //Encriptar
@@ -28,19 +28,20 @@ void encrypt(uint64_t key, char *ciph) {
 }
 
 // A la hora de leer y encriptar al parecer toma todo como uno en vez que cumpla con los 8 bytes, esto se asegura de eso
+// Función que agrega padding a un texto para que tenga un tamaño múltiplo de 8 bytes.
 unsigned char* addPadding(unsigned char* text, size_t* size) {
-    int padding_size = 8 - (*size % 8);
-    unsigned char* padded_text = malloc(*size + padding_size + 1);
-    memcpy(padded_text, text, *size);
-    for (int i = 0; i < padding_size; i++) {
-        padded_text[*size + i] = padding_size;
+    int padding_size = 8 - (*size % 8); // Calcular cuántos bytes de padding son necesarios
+    unsigned char* padded_text = malloc(*size + padding_size + 1); // Reservar memoria para el texto con padding
+    memcpy(padded_text, text, *size); // Copiar el texto original al nuevo buffer
+    for (int i = 0; i < padding_size; i++) { 
+        padded_text[*size + i] = padding_size; // Agregar bytes de padding
     }
-    padded_text[*size + padding_size] = '\0';
-    *size = *size + padding_size;
+    padded_text[*size + padding_size] = '\0'; // Terminador de cadena
+    *size = *size + padding_size; // Actualizar el tamaño total
     return padded_text;
 }
 
-
+// Leer un archivo, cifrar su contenido y devolver el texto cifrado.
 char *read_file_and_encrypt(const char *filename, long key) {
     FILE *file = fopen(filename, "r");
     if (!file) {
@@ -75,8 +76,9 @@ char *read_file_and_encrypt(const char *filename, long key) {
 
 
 
-//palabra clave a buscar en texto descifrado para determinar si se rompio el codigo
+//Palabra clave a buscar en texto descifrado para determinar si se rompio el codigo
 char search[] = "Esta";
+// Intentar descifrar el texto con una llave y buscar la palabra clave.
 int tryKey(uint64_t key, char *ciph, int len){
   char temp[len+1]; //+1 por el caracter terminal
   memcpy(temp, ciph, len);
@@ -110,7 +112,7 @@ int main(int argc, char *argv[]){
   memcpy(cipher, eltexto, ciphlen);
   cipher[ciphlen]=0;
 
-  //INIT MPI
+  // Inicializar MPI
   MPI_Init(NULL, NULL);
   MPI_Comm_size(comm, &N);
   MPI_Comm_rank(comm, &id);
@@ -119,34 +121,30 @@ int main(int argc, char *argv[]){
   long found = 0L;
   int ready = 0;
 
-  //distribuir trabajo de forma naive
+  // Distribuir el trabajo entre los nodos
   long range_per_node = upper / N;
   mylower = range_per_node * id;
   myupper = range_per_node * (id+1) -1;
   if(id == N-1){
-    //compensar residuo
     myupper = upper;
   }
-
-  //non blocking receive, revisar en el for si alguien ya encontro
+  // Recibir mensaje de manera no bloqueante
   MPI_Irecv(&found, 1, MPI_LONG, MPI_ANY_SOURCE, MPI_ANY_TAG, comm, &req);
-
   for(long i = mylower; i<myupper; ++i){
     MPI_Test(&req, &ready, MPI_STATUS_IGNORE);
     if(ready)
-      break;  //ya encontraron, salir
+      break;
 
     if(tryKey(i, cipher, ciphlen)){
       found = i;
       printf("El proceso: %d encontro la llave\n", id);
       for(int node=0; node<N; node++){
-        MPI_Send(&found, 1, MPI_LONG, node, 0, comm); //avisar a otros
+        MPI_Send(&found, 1, MPI_LONG, node, 0, comm);
       }
       break;
     }
   }
-
-  //wait y luego imprimir el texto
+  // Si es el proceso maestro, esperar mensaje y luego imprimir el texto descifrado
   if(id==0){
     MPI_Wait(&req, &st);
     decrypt(found, cipher, ciphlen);
@@ -160,15 +158,13 @@ int main(int argc, char *argv[]){
 
   end_time = MPI_Wtime();
   double elapsed_time = end_time - start_time;
-
+  // Reducir el tiempo máximo entre todos los nodos
   double max_elapsed_time;
   MPI_Reduce(&elapsed_time, &max_elapsed_time, 1, MPI_DOUBLE, MPI_MAX, 0, comm);
 
   if (id == 0) {
     printf("Tiempo total de ejecucion: %f s\n", max_elapsed_time);
   }
-
-  //FIN entorno MPI
   MPI_Finalize();
   free(eltexto);
 }
