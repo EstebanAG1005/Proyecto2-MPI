@@ -137,7 +137,6 @@ int main(int argc, char *argv[]){
 
     if(tryKey(i, cipher, ciphlen)){
       found = i;
-      printf("El proceso: %d encontro la llave\n", id);
       for(int node=0; node<N; node++){
         MPI_Send(&found, 1, MPI_LONG, node, 0, comm);
       }
@@ -148,8 +147,7 @@ int main(int argc, char *argv[]){
   if(id==0){
     MPI_Wait(&req, &st);
     decrypt(found, cipher, ciphlen);
-    printf("Se encontro la llave:\n");
-    printf("Llave = %li\n\n", found);
+    printf("Se encontro la llave: %li\n\n", found);
     printf("Mensaje desencriptado:\n");
     printf("%s\n", cipher);
   }
