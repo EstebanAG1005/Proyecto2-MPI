@@ -4,29 +4,33 @@
 #include <mpi.h>
 #include <unistd.h>
 #include <openssl/des.h>
+#include <stdint.h>
 
-void decrypt(long key, unsigned char *ciph, int len){
-    DES_cblock k;
-    for(int i=0; i<8; ++i){
-        k[i] = (key >> (8*(7-i))) & 0xFF;
-    }
+#define WORK_TAG 1
+#define STOP_TAG 2
+#define CHUNK_SIZE 10000  // Definir el tamaño de los bloques de claves a probar
+
+// Función para desencriptar usando DES
+void decrypt(uint64_t key, char *ciph, int len) {
     DES_key_schedule ks;
-    DES_set_odd_parity(&k);
-    DES_set_key_checked(&k, &ks);
-    DES_ecb_encrypt((const_DES_cblock *)ciph, (DES_cblock *)ciph, &ks, DES_DECRYPT);
+    DES_cblock k;
+    memcpy(k, &key, 8);  // Copiar la llave en el bloque k
+    DES_set_odd_parity(&k);  // Establecer paridad impar
+    DES_set_key_checked(&k, &ks);  // Establecer llave para la encriptación
+    DES_ecb_encrypt((const_DES_cblock *)ciph, (DES_cblock *)ciph, &ks, DES_DECRYPT);  // Desencriptar en modo ECB
 }
 
-void encrypt(long key, unsigned char *ciph, int len){
-    DES_cblock k;
-    for(int i=0; i<8; ++i){
-        k[i] = (key >> (8*(7-i))) & 0xFF;
-    }
+// Función para encriptar usando DES
+void encrypt(uint64_t key, char *ciph) {
     DES_key_schedule ks;
-    DES_set_odd_parity(&k);
-    DES_set_key_checked(&k, &ks);
-    DES_ecb_encrypt((const_DES_cblock *)ciph, (DES_cblock *)ciph, &ks, DES_ENCRYPT);
+    DES_cblock k;
+    memcpy(k, &key, 8);  // Copiar la llave en el bloque k
+    DES_set_odd_parity(&k);  // Establecer paridad impar
+    DES_set_key_checked(&k, &ks);  // Establecer llave para la encriptación
+    DES_ecb_encrypt((const_DES_cblock *)ciph, (DES_cblock *)ciph, &ks, DES_ENCRYPT);  // Encriptar en modo ECB
 }
 
+// Función para añadir padding y garantizar bloques de 8 bytes
 unsigned char* addPadding(unsigned char* text, size_t* size) {
     int padding_size = 8 - (*size % 8);
     unsigned char* padded_text = malloc(*size + padding_size + 1);
@@ -39,120 +43,128 @@ unsigned char* addPadding(unsigned char* text, size_t* size) {
     return padded_text;
 }
 
-void readFileAndEncrypt(const char *filename, long key, unsigned char **cipher, size_t* cipher_len) {
-    FILE *file = fopen(filename, "rb");
+// Leer archivo, encriptarlo y devolver el texto encriptado
+char *read_file_and_encrypt(const char *filename, long key) {
+    FILE *file = fopen(filename, "r");
     if (!file) {
-        fprintf(stderr, "Error opening file: %s\n", filename);
-        MPI_Abort(MPI_COMM_WORLD, 1);
+        perror("Error abriendo el archivo");
+        exit(EXIT_FAILURE);
     }
 
     fseek(file, 0, SEEK_END);
-    size_t file_len = ftell(file);
+    long file_size = ftell(file);
     fseek(file, 0, SEEK_SET);
 
-    unsigned char *plain = malloc(file_len + 1);
-    fread(plain, 1, file_len, file);
-    plain[file_len] = '\0';
+    char *file_contents = (char *)malloc(file_size + 1);
+    if (!file_contents) {
+        perror("Error reservando memoria");
+        exit(EXIT_FAILURE);
+    }
+
+    fread(file_contents, 1, file_size, file);
     fclose(file);
 
-    plain = addPadding(plain, &file_len);
+    file_contents[file_size] = '\0';
 
-    *cipher = malloc(file_len + 1);
-    memcpy(*cipher, plain, file_len);
-    (*cipher)[file_len] = '\0';
+    // Agregar padding al texto
+    unsigned char *padded_text = addPadding((unsigned char*)file_contents, &file_size);
+    free(file_contents);
 
-    free(plain);
-    *cipher_len = file_len;
+    // Encriptar el texto con padding
+    encrypt(key, (char *)padded_text);
 
-    encrypt(key, *cipher, *cipher_len);
+    return (char *)padded_text;
 }
 
-char search[] = "es una prueba de";
-int tryKey(long key, unsigned char *ciph, int len, const char *search, unsigned char *decrypted_text){
-    memcpy(decrypted_text, ciph, len);
-    decrypted_text[len] = 0;
-    decrypt(key, decrypted_text, len);
-    
-    // Elimina el relleno
-    int padding_size = decrypted_text[len - 1];
-    if (padding_size >= 1 && padding_size <= 8) {
-        len -= padding_size;
-        decrypted_text[len] = '\0';
-    }
-    
-    return strstr((char *)decrypted_text, search) != NULL;
+// Palabra clave a buscar en el texto descifrado para determinar si el cifrado fue exitoso
+char search[] = "Esta";
+
+// Probar una llave específica y verificar si el texto desencriptado contiene la palabra clave
+int tryKey(uint64_t key, char *ciph, int len){
+    char temp[len+1];
+    memcpy(temp, ciph, len);
+    temp[len] = 0;
+    decrypt(key, temp, len);
+    return strstr((char *)temp, search) != NULL;
 }
 
+int main(int argc, char *argv[]){
 
-
-int main(int argc, char *argv[]) {
+    // Verificar argumentos
     if (argc != 3) {
-        printf("Uso: %s <clave> <archivo_de_entrada>\n", argv[0]);
-        return 1;
+        fprintf(stderr, "Uso: %s <nombre_archivo> <llave_privada>\n", argv[0]);
+        exit(EXIT_FAILURE);
     }
-    long theKey = strtol(argv[1], NULL, 10);
-    const char *inputFile = argv[2]; 
 
-    int processSize, id;
-    long upper = (1L << 56);
-    long myLower, myUpper;
+    const char *filename = argv[1];
+    long the_key = strtol(argv[2], NULL, 10);
+    double start_time, end_time;
+    int N, id;
+    uint64_t upper = (1ULL << 56);
+    uint64_t mylower, myupper;
     MPI_Status st;
     MPI_Request req;
 
+    char *eltexto = read_file_and_encrypt(filename, the_key);
+    int ciphlen = strlen(eltexto);
     MPI_Comm comm = MPI_COMM_WORLD;
-    double start, end;
 
-    unsigned char *cipher;
-    size_t cipherLen;
+    char cipher[ciphlen+1];
+    memcpy(cipher, eltexto, ciphlen);
+    cipher[ciphlen] = 0;
 
-    readFileAndEncrypt(inputFile, theKey, &cipher, &cipherLen);
-
+    // Inicializar MPI
     MPI_Init(NULL, NULL);
-    MPI_Comm_size(comm, &processSize);
+    MPI_Comm_size(comm, &N);
     MPI_Comm_rank(comm, &id);
+    start_time = MPI_Wtime();
 
-    unsigned char *foundText = malloc(cipherLen + 1);
+    long found = 0L;
     int ready = 0;
 
-    long rangePerNode = upper / processSize;
-    myLower = rangePerNode * id;
-    myUpper = rangePerNode * (id + 1) - 1;
-    if (id == processSize - 1) {
-        myUpper = upper;
-    }
+    // Ajustar rangos de búsqueda de llaves
+    mylower = id;
+    myupper = upper;
 
-    if (id == 0) {
-        printf("Procesando...\n");
-        start = MPI_Wtime();
-    }
+    // Iniciar recepción no bloqueante
+    MPI_Irecv(&found, 1, MPI_LONG, MPI_ANY_SOURCE, MPI_ANY_TAG, comm, &req);
 
-    MPI_Irecv(foundText, cipherLen, MPI_CHAR, MPI_ANY_SOURCE, MPI_ANY_TAG, comm, &req);
-
-    for (long i = myLower; i < myUpper; i += 16) { // Aplicación de saltos
+    // Búsqueda de llave
+    for(uint64_t i = mylower; i < myupper; i += N){
         MPI_Test(&req, &ready, MPI_STATUS_IGNORE);
-        if (ready)
-            break;
+        if(ready) break;
 
-        for (int j = 0; j < 16; j++) {
-            long keyToTry = i + j;
-            if (tryKey(keyToTry, cipher, cipherLen, search, foundText)) {
-                printf("Proceso %d encontró la clave: %li\n", id, keyToTry);
-                end = MPI_Wtime();
-                for (int node = 0; node < processSize; node++) {
-                    MPI_Send(foundText, cipherLen, MPI_CHAR, node, 0, comm);
-                }
-                break;
+        if(tryKey(i, cipher, ciphlen)){
+            found = i;
+            for(int node = 0; node < N; node++){
+                MPI_Send(&found, 1, MPI_LONG, node, 0, comm);
             }
+            break;
         }
     }
 
-    if (id == 0) {
+    // Proceso principal imprime el resultado
+    if(id == 0){
         MPI_Wait(&req, &st);
-        printf("Tiempo para romper el cifrado DES: %f segundos\n", end - start);
+        decrypt(found, cipher, ciphlen);
+        printf("Se encontro la llave: %li\n\n", found);
+        printf("Mensaje desencriptado: \n");
+        printf("%s\n", cipher);
+    }
+    printf("Proceso %d terminando\n", id);
+
+    end_time = MPI_Wtime();
+    double elapsed_time = end_time - start_time;
+
+    double max_elapsed_time;
+    MPI_Reduce(&elapsed_time, &max_elapsed_time, 1, MPI_DOUBLE, MPI_MAX, 0, comm);
+
+    if (id == 0) {
+        printf("Tiempo total de ejecucion: %f s\n", max_elapsed_time);
     }
 
-    free(cipher);
-    free(foundText);
+    // Finalizar entorno MPI
     MPI_Finalize();
-    return 0;
+    free(eltexto);
 }
+
