@@ -1,24 +1,12 @@
 /**
- * The code is a parallel implementation of a brute-force attack on a DES encrypted file to find the
- * encryption key.
+ * El código es una implementación paralela de un ataque de fuerza bruta en un archivo cifrado con DES para encontrar la
+ * clave de cifrado.
  *
- * @param key The "key" parameter is the private key used for encryption and decryption. It is a long
- * integer value that is passed as a command line argument when running the program.
- * @param ciph The variable `ciph` is a character array that represents the encrypted text. It is
- * passed to the `tryKey` function to check if a specific key can decrypt the text successfully.
- * @param len The variable `len` represents the length of the ciphertext (encrypted text) that is being
- * passed to the `tryKey` function.
- */
-/**
- * The above code is a parallel implementation of a brute-force attack on a DES encrypted file to find
- * the encryption key.
- *
- * @param key The "key" parameter is the private key used for encryption and decryption. It is a long
- * integer value that is passed as a command line argument when running the program.
- * @param ciph The variable `ciph` is a character array that represents the encrypted text. It is
- * passed to the `tryKey` function to check if a specific key can decrypt the text successfully.
- * @param len The variable `len` represents the length of the ciphertext (encrypted text) that is being
- * passed to the `tryKey` function.
+ * @param key El parámetro "key" es la clave privada utilizada para el cifrado y descifrado. Es un valor entero largo
+ * que se pasa como argumento de línea de comandos al ejecutar el programa.
+ * @param ciph La variable `ciph` es un arreglo de caracteres que representa el texto cifrado. Se pasa a la función `tryKey`
+ * para verificar si una clave específica puede descifrar el texto con éxito.
+ * @param len La variable `len` representa la longitud del texto cifrado que se está pasando a la función `tryKey`.
  */
 #include <string.h>
 #include <stdio.h>
@@ -54,15 +42,14 @@ void encrypt(uint64_t key, char *ciph)
     DES_ecb_encrypt((const_DES_cblock *)ciph, (DES_cblock *)ciph, &ks, DES_ENCRYPT); // Encriptar en modo ECB
 }
 
-// Función para añadir padding y garantizar bloques de 8 bytes
+// Función para añadir relleno y garantizar bloques de 8 bytes
 /**
- * The function `addPadding` adds padding to a given text to ensure its size is a multiple of 8.
+ * La función `addPadding` añade relleno a un texto dado para asegurar que su tamaño sea múltiplo de 8.
  *
- * @param text A pointer to an array of unsigned characters representing the original text.
- * @param size The "size" parameter is a pointer to a variable that stores the size of the "text"
- * array.
+ * @param text Un puntero a un arreglo de caracteres sin firmar que representa el texto original.
+ * @param size El parámetro "size" es un puntero a una variable que almacena el tamaño del arreglo "text".
  *
- * @return a pointer to an unsigned char, which represents the padded text.
+ * @return un puntero a un carácter sin firmar, que representa el texto con relleno.
  */
 unsigned char *addPadding(unsigned char *text, size_t *size)
 {
@@ -79,14 +66,14 @@ unsigned char *addPadding(unsigned char *text, size_t *size)
 }
 
 /**
- * The function reads a file, encrypts its contents using a given key, and returns the encrypted text.
+ * La función lee un archivo, cifra su contenido usando una clave dada y devuelve el texto cifrado.
  *
- * @param filename The filename parameter is a string that represents the name of the file to be read
- * and encrypted.
- * @param key The "key" parameter is a long integer that is used for encryption. It is used as a secret
- * key to perform encryption operations on the file contents.
+ * @param filename El parámetro "filename" es una cadena que representa el nombre del archivo que se va a leer
+ * y cifrar.
+ * @param key El parámetro "key" es un entero largo que se utiliza para la cifra. Se usa como una clave secreta
+ * para realizar operaciones de cifrado en el contenido del archivo.
  *
- * @return a pointer to the encrypted text.
+ * @return un puntero al texto cifrado.
  */
 // Leer archivo, encriptarlo y devolver el texto encriptado
 char *read_file_and_encrypt(const char *filename, long key)
@@ -138,12 +125,12 @@ int tryKey(uint64_t key, char *ciph, int len)
 }
 
 /**
- * The above function is a parallel program that searches for a key to decrypt a cipher text using MPI
- * (Message Passing Interface) library.
+ * La función anterior es un programa paralelo que busca una clave para descifrar un texto cifrado utilizando la biblioteca MPI
+ * (Message Passing Interface).
  *
- * @param argc The variable `argc` represents the number of command-line arguments passed to the
- * program. In this case, it is the total number of arguments including the program name itself.
- * @param argv - argv[0]: The name of the executable file
+ * @param argc La variable `argc` representa el número de argumentos de línea de comandos pasados al
+ * programa. En este caso, es el número total de argumentos, incluyendo el nombre del programa en sí.
+ * @param argv - argv[0]: El nombre del archivo ejecutable.
  */
 int main(int argc, char *argv[])
 {
