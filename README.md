@@ -17,3 +17,14 @@
 ## Correr el progama 
 
 *mpirun -n [numero de procesos] ./bruteforce*
+
+
+# parte de Native
+
+## Compilar
+
+*mpicc -w -o Native Native.c -lssl -lcrypto*
+
+## Correr el progama 
+
+``mpirun -n [numero de procesos] ./Native input.txt [Llave]``
