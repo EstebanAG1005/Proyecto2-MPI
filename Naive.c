@@ -7,6 +7,14 @@
 #include <stdint.h>
 
 
+/**
+ * La función descifra un texto cifrado dado usando el algoritmo DES con una llave especificada.
+ * 
+ * @param key La llave es un entero sin signo de 64 bits usado para cifrado y descifrado.
+ * @param ciph El parámetro "ciph" es un puntero a una matriz de caracteres que representa el mensaje
+ * cifrado. La longitud del mensaje cifrado está especificada por el parámetro "len".
+ * @param len El parámetro "len" representa la longitud del texto cifrado (mensaje cifrado) en bytes.
+ */
 //Desencriptar
 void decrypt(uint64_t key, char *ciph, int len) {
   DES_key_schedule ks;
@@ -17,6 +25,13 @@ void decrypt(uint64_t key, char *ciph, int len) {
   DES_ecb_encrypt((const_DES_cblock *)ciph, (DES_cblock *)ciph, &ks, DES_DECRYPT); // Descifrar en modo ECB
 }
 
+/**
+ * La función cifra un mensaje dado utilizando el algoritmo de cifrado DES con una llave especificada.
+ * 
+ * @param key La llave es un entero sin signo de 64 bits usado para el cifrado.
+ * @param ciph El parámetro "ciph" es un puntero a una matriz de caracteres que representa el texto plano o
+ * el mensaje que desea cifrar.
+ */
 //Encriptar
 void encrypt(uint64_t key, char *ciph) {
   DES_key_schedule ks;
@@ -27,6 +42,16 @@ void encrypt(uint64_t key, char *ciph) {
   DES_ecb_encrypt((const_DES_cblock *)ciph, (DES_cblock *)ciph, &ks, DES_ENCRYPT);
 }
 
+/**
+ * La función addPadding añade relleno a un texto para asegurar que su tamaño sea múltiplo de 8 bytes.
+ * 
+ * @param text El parámetro `text` es un puntero a un arreglo de caracteres sin signo, que representa
+ * el texto original que necesita ser rellenado.
+ * @param size El parámetro "size" es un puntero a una variable que contiene el tamaño del texto
+ * original. Se pasa por referencia para que la función pueda actualizar su valor después de añadir relleno.
+ * 
+ * @return un puntero al texto rellenado.
+ */
 // A la hora de leer y encriptar al parecer toma todo como uno en vez que cumpla con los 8 bytes, esto se asegura de eso
 // Función que agrega padding a un texto para que tenga un tamaño múltiplo de 8 bytes.
 unsigned char* addPadding(unsigned char* text, size_t* size) {
@@ -41,6 +66,18 @@ unsigned char* addPadding(unsigned char* text, size_t* size) {
     return padded_text;
 }
 
+/**
+ * La función lee un archivo, cifra su contenido, y devuelve el texto cifrado.
+ * 
+ * @param filename El parámetro filename es una cadena que representa el nombre del archivo a ser leído
+ * y cifrado.
+ * @param key El parámetro "key" es un entero largo que se utiliza para el cifrado. Se utiliza como un
+ * parámetro para la función "encrypt", que no se muestra en el fragmento de código proporcionado. La función
+ * "encrypt" probablemente toma la llave y el texto rellenado como entrada y ejecuta algún algoritmo de cifrado
+ * sobre el.
+ * 
+ * @return un puntero al texto cifrado.
+ */
 // Leer un archivo, cifrar su contenido y devolver el texto cifrado.
 char *read_file_and_encrypt(const char *filename, long key) {
     FILE *file = fopen(filename, "r");
@@ -75,7 +112,16 @@ char *read_file_and_encrypt(const char *filename, long key) {
 }
 
 
-
+/**
+ * La función intenta descifrar un texto cifrado dado utilizando una llave y verifica si una palabra clave específica está
+ * presente en el texto descifrado.
+ * 
+ * @param key La llave es un entero sin signo de 64 bits utilizado para el descifrado.
+ * @param ciph El parámetro "ciph" es el texto cifrado que necesita ser descifrado.
+ * @param len El parámetro "len" representa la longitud de la cadena de texto cifrado.
+ * 
+ * @return un valor booleano que indica si la palabra clave "Esta" se encuentra en el texto descifrado.
+ */
 //Palabra clave a buscar en texto descifrado para determinar si se rompio el codigo
 char search[] = "Esta";
 // Intentar descifrar el texto con una llave y buscar la palabra clave.
@@ -87,6 +133,14 @@ int tryKey(uint64_t key, char *ciph, int len){
   return strstr((char *)temp, search) != NULL;
 }
 
+/**
+ * La función de arriba es un programa paralelo que intenta descifrar un texto cifrado dado usando un enfoque de
+ * fuerza bruta al probar diferentes llaves en paralelo.
+ * 
+ * @param argc La variable `argc` representa el número de argumentos de línea de comandos pasados al
+ * programa. En este caso, es el número total de argumentos incluyendo el nombre del programa en sí.
+ * @param argv argv[0]: El nombre del archivo ejecutable
+ */
 //key a probar: 42, 123456L, 18014398509481983L, 18014398509481984L
 int main(int argc, char *argv[]){
 
